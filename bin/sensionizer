@@ -123,6 +123,13 @@ function main {
     tmux new-session -ds "$session_name" -c "$session_dir"
   fi
 
+  # Check if the target has a pane in the selected directory.
+  # Otherwise, open a new window on it.
+  pane_paths=($(tmux list-panes -s -t "$session_name" -F '#{pane_current_path}'))
+  if ! (( $pane_paths[(I)$session_dir] )); then
+    tmux new-window -t "${session_name}:" -c "$session_dir"
+  fi
+
   # Switch or attach to the session
   if [ -z "$TMUX" ]; then
     tmux attach -t "$session_name"
