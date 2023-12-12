@@ -86,8 +86,12 @@ function fzf-projects {
 function build-session-name {
   local session_dir="$1"
 
-  echo "${session_dir:t2}" | \
-    tr . - | tr ' ' - | tr ':' - | tr '[:upper:]' '[:lower:]'
+  if [[ -v session_names[$session_dir] ]]; then
+    echo "$session_names[$session_dir]"
+  else
+    echo "${session_dir:t2}" | \
+      tr . - | tr ' ' - | tr ':' - | tr '[:upper:]' '[:lower:]'
+  fi
 }
 
 function main {
@@ -102,7 +106,7 @@ function main {
     session_dir=$(echo "$selected" | cut -d ':' -f2)
   fi
 
-  local session_name=$(build-session-name "$session_dir")
+  local session_name="$(build-session-name "$session_dir")"
 
   # Increment the directory's rank
   zoxide add "$session_dir"
