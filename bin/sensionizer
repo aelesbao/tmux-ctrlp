@@ -123,8 +123,12 @@ function main {
     tmux new-session -ds "$session_name" -c "$session_dir"
   fi
 
-  # switch to the session
-  tmux switch-client -t "$session_name"
+  # Switch or attach to the session
+  if [ -z "$TMUX" ]; then
+    tmux attach -t "$session_name"
+  else
+    tmux switch-client -t "$session_name"
+  fi
 }
 
 main "$@"
