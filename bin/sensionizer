@@ -84,12 +84,12 @@ function fzf-projects {
 }
 
 function build-session-name {
-  local session_dir="$1"
+  local target_dir="$1"
 
-  if [[ -v session_names[$session_dir] ]]; then
-    echo "$session_names[$session_dir]"
+  if [[ -v session_names[$target_dir] ]]; then
+    echo "$session_names[$target_dir]"
   else
-    echo "${session_dir:t2}" | \
+    echo "${target_dir:t2}" | \
       tr . - | tr ' ' - | tr ':' - | tr '[:upper:]' '[:lower:]'
   fi
 }
@@ -97,44 +97,44 @@ function build-session-name {
 function main {
   load-config
 
-  local session_dir="$1"
+  local target_dir="$1"
 
-  if ! [[ -d "$session_dir" ]]; then
+  if ! [[ -d "$target_dir" ]]; then
     local selected="$(fzf-projects)"
     [[ -n "$selected" ]] || return 0
 
-    session_dir=$(echo "$selected" | cut -d ':' -f2)
+    target_dir=$(echo "$selected" | cut -d ':' -f2)
   fi
 
-  local session_name="$(build-session-name "$session_dir")"
+  local session="$(build-session-name "$target_dir")"
 
   # Increment the directory's rank
-  zoxide add "$session_dir"
+  zoxide add "$target_dir"
 
   # If tmux is not running, create the session at target directory
   if [[ -z "$TMUX" ]] && [[ -z "$(pgrep tmux)" ]]; then
-    tmux new-session -s "$session_name" -c "$session_dir"
+    tmux new-session -s "$session" -c "$target_dir"
     return
   fi
 
   # If tmux is running but the session doesn't exists,
   # create it at the target directory
-  if ! tmux has-session -t "$session_name" 2> /dev/null; then
-    tmux new-session -ds "$session_name" -c "$session_dir"
+  if ! tmux has-session -t "$session" 2> /dev/null; then
+    tmux new-session -ds "$session" -c "$target_dir"
   fi
 
   # Check if the target has a pane in the selected directory.
   # Otherwise, open a new window on it.
-  pane_paths=($(tmux list-panes -s -t "$session_name" -F '#{pane_current_path}'))
-  if ! (( $pane_paths[(I)$session_dir] )); then
-    tmux new-window -t "${session_name}:" -c "$session_dir"
+  pane_paths=($(tmux list-panes -s -t "$session" -F '#{pane_current_path}'))
+  if ! (( $pane_paths[(I)$target_dir] )); then
+    tmux new-window -t "${session}:" -c "$target_dir"
   fi
 
   # Switch or attach to the session
   if [ -z "$TMUX" ]; then
-    tmux attach -t "$session_name"
+    tmux attach -t "$session"
   else
-    tmux switch-client -t "$session_name"
+    tmux switch-client -t "$session"
   fi
 }
 
