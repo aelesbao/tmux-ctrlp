@@ -6,138 +6,26 @@
 #   Augusto Elesbão <aelesbao@users.noreply.github.com>
 #
 
-set -e
+local bin_name="${0:A:t}"
+local libexec_dir="${0:A:h}/../libexec"
 
-if ! (( \
-       (( ${+commands[eza]} )) \
-    && (( ${+commands[fd]} )) \
-    && (( ${+commands[fzf-tmux]} )) \
-    && (( ${+commands[zoxide]} )) \
-  )); then
-  echo "Required dependencies not found. Please install fd, fzf, and zoxide" >&2
-  exit 1
-fi
-
-# Maximum depth to search for projects in the workspaces
-typeset -i max_depth=2
-
-# Defines global workspaces to be included in the project search paths
-typeset -U workspaces
-
-# Defines preferred session names for specific project folders
-typeset -A session_names
-
-config_file_name="ctrlp.config.zsh"
-
-# Adds session name overrides for specific projects
-function add-session-name() {
-  local name=$1
-  local -a paths=(${argv[@]:2})
-
-  for p in ${~paths}; do
-    session_names[$p]=$name
-  done
-}
-
-function get-tmux-config-dir {
-  local tmux_config_xdg="${XDG_CONFIG_HOME:-$HOME/.config}/tmux/tmux.conf"
-
-  if [ -f "${tmux_config_xdg}" ]; then
-    echo "${tmux_config_xdg:h}"
-  else
-    echo "$HOME"
-  fi
-}
-
-function load-config {
-  local config_file="$(get-tmux-config-dir)/$config_file_name"
-  [[ -f "${config_file}" ]] && source "$config_file"
-}
-
-# Fuzzy find on all git projects
-function fzf-projects {
-  local -a projects=($(fd --max-depth $max_depth -H -g '.git' ${^workspaces}))
-  local -A scores=($(zoxide query -sl | awk -F' ' '{ print $2 " " $1 }'))
-  local -a result=()
-
-  # Construct the result array by removing duplicates, cleaning the
-  # trailing `.git` from the flder name, associating zoxide's path score,
-  # and replacing $HOME with ~
-  for project in ${(u)projects}; do
-    project=${project:h}
-    score=${scores[$project]:-'0.0'}
-    result+=("$score:$project:${(D)project}")
-  done
-
-  # Sorts the result in numerical descending order
-  result=(${(nO)result})
-
-  preview_cmd='echo {2} | cut -d ":" -f1 | \
-    eza -1h --color=always --icons=always --no-quotes \
-    --group-directories-first --stdin'
-
-  echo "${(F)result}" | fzf-tmux -p --ansi \
-    --scheme=path \
-    --tiebreak=index \
-    --delimiter=: --with-nth=3 \
-    --preview="$preview_cmd" \
-    --preview-window='30%' \
-    --border-label='Choose the project to open a tmux session'
-}
-
-function build-session-name {
-  local target_dir="$1"
-
-  if [[ -v session_names[$target_dir] ]]; then
-    echo "$session_names[$target_dir]"
-  else
-    echo "${target_dir:t2}" | \
-      tr . - | tr ' ' - | tr ':' - | tr '[:upper:]' '[:lower:]'
-  fi
+function help {
+  echo "Usage: ${0:A:t} [command] [args]"
+  echo
+  echo "Commands:"
+  echo "  project    Fuzzy find configured workspace projects and open sessions"
 }
 
 function main {
-  load-config
+  local command="$1"
+  local command_exec="${libexec_dir}/${command}"
 
-  local target_dir="$1"
-
-  if ! [[ -d "$target_dir" ]]; then
-    local selected="$(fzf-projects)"
-    [[ -n "$selected" ]] || return 0
-
-    target_dir=$(echo "$selected" | cut -d ':' -f2)
+  if ! [[ -x $command_exec ]]; then
+    help
+    exit 1
   fi
 
-  local session="$(build-session-name "$target_dir")"
-
-  # Increment the directory's rank
-  zoxide add "$target_dir"
-
-  # If tmux is not running, create the session at target directory
-  if [[ -z "$TMUX" ]] && [[ -z "$(pgrep tmux)" ]]; then
-    tmux new-session -s "$session" -c "$target_dir"
-    return
-  fi
-
-  # If tmux is running but the session doesn't exists,
-  # create it at the target directory
-  if ! tmux has-session -t "$session" 2> /dev/null; then
-    tmux new-session -ds "$session" -c "$target_dir"
-  fi
-
-  # Check if the target has a pane in the selected directory.
-  # Otherwise, open a new window on it.
-  pane_paths=($(tmux list-panes -s -t "$session" -F '#{pane_current_path}'))
-  if ! (( $pane_paths[(I)$target_dir] )); then
-    tmux new-window -t "${session}:" -c "$target_dir"
-  fi
-
-  # Switch or attach to the session
-  if [ -z "$TMUX" ]; then
-    tmux attach -t "$session"
-  else
-    tmux switch-client -t "$session"
-  fi
+  "$command_exec" "${argv[@]:2}"
 }
 
 main "$@"
