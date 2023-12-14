@@ -52,7 +52,7 @@ source-file ~/.tmux.conf
 
 | Binding | Description |
 |:-------:|-------------|
-| `C-p`   | Fuzzy find across your defined workspace projects |
+| `<prefix> C-p` | Fuzzy find across your defined workspace projects |
 
 ## License
 

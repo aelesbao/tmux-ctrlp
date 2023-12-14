@@ -3,7 +3,7 @@
 local script_dir=${0:A:h}
 
 function main {
-  tmux bind -T 'C-p' run "${(D)script_dir}/bin/ctrlp"
+  tmux bind 'C-p' run "${(D)script_dir}/bin/ctrlp"
 }
 
 main
