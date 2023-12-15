@@ -1,0 +1,50 @@
+#!/usr/bin/env zsh
+
+set -e
+
+if ! (( ${+commands[fzf-tmux]} )); then
+  echo "Required dependencies not found. Please install fzf" >&2
+  exit 1
+fi
+
+local cache_dir="${XDG_CACHE_DIR:-$HOME/.cache}/tmux"
+
+function list-panes {
+  local index_format="#{session_name}:#{window_index}.#{pane_index}"
+  local -a panes_format=(
+    "$(tput setaf 6) #{session_name}$(tput sgr0)"
+    "$(tput setaf 5) #{window_name}$(tput sgr0)"
+    "$(tput setaf 4) #{s@$HOME@~@:pane_current_path}$(tput sgr0)"
+    "$(tput setaf 3) #{pane_current_command}$(tput sgr0)"
+  )
+  tmux list-panes -a -F "${index_format}#${(j. | .)panes_format}"
+}
+
+function fzf-sessions {
+  [[ -d "$cache_dir" ]] || mkdir-p "$cache_dir"
+
+  list-panes | fzf-tmux -p 80% --ansi \
+    --scheme=history \
+    --tiebreak=begin,index \
+    --history="$cache_dir/ctrlp-session-history" \
+    --delimiter=\# --with-nth=2 \
+    --preview='tmux capture-pane -t {1} -p -e -N' \
+    --preview-window='70%:bottom' \
+    --border-label='Choose the pane to focus'
+}
+
+function main {
+  # target format = session:window.pane
+  local target="$1"
+
+  if [[ -z "$target" ]]; then
+    target="$(fzf-sessions | cut -d '#' -f1)"
+    [[ -n "$target" ]] || return 0
+  fi
+
+  tmux switch-client -t "$target"
+}
+
+main "$@"
+
+# vim:ft=zsh
