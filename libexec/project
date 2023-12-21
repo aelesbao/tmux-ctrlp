@@ -1,6 +1,6 @@
 #!/usr/bin/env zsh
 
-set -e
+set -e -o extendedglob
 
 if ! (( \
        (( ${+commands[eza]} )) \
@@ -12,53 +12,32 @@ if ! (( \
   exit 1
 fi
 
-# Maximum depth to search for projects in the workspaces
-typeset -i max_depth=2
+local script_dir=${~0:A:h}
 
-# Defines global workspaces to be included in the project search paths
-typeset -U workspaces
+source $script_dir/../lib/config.zsh
 
-# Defines preferred session names for specific project folders
-typeset -A session_names
-
-config_file_name="ctrlp.config.zsh"
-
-function get-tmux-config-dir {
-  local tmux_config_xdg="${XDG_CONFIG_HOME:-$HOME/.config}/tmux/tmux.conf"
-
-  if [ -f "${tmux_config_xdg}" ]; then
-    echo "${tmux_config_xdg:h}"
-  else
-    echo "$HOME"
-  fi
+# Scans the workspaces for git repositories and
+# cleans the trailing .git from the folder name.
+function find-repos() {
+  local -U repos=($(fd --max-depth $max_depth -H -g '.git' ${^workspaces}))
+  echo ${repos%/\.git(/)#}
 }
 
-function load-config {
-  # Adds session name overrides for specific projects
-  function add-session-name() {
-    local name=$1
-    local -a paths=(${argv[@]:2})
-
-    for p in ${~paths}; do
-      session_names[$p]=$name
-    done
-  }
-
-  local config_file="$(get-tmux-config-dir)/$config_file_name"
-  [[ -f "${config_file}" ]] && source "$config_file"
+function search-paths() {
+  local -U search_paths=()
+  search_paths+=(${projects[@]})
+  search_paths+=($(find-repos))
+  echo ${search_paths[@]}
 }
 
-# Fuzzy find on all git projects
+# Fuzzy find on all projects.
 function fzf-projects {
-  local -a projects=($(fd --max-depth $max_depth -H -g '.git' ${^workspaces}))
   local -A scores=($(zoxide query -sl | awk -F' ' '{ print $2 " " $1 }'))
   local -a result=()
 
-  # Construct the result array by removing duplicates, cleaning the
-  # trailing `.git` from the flder name, associating zoxide's path score,
+  # Construct the result array, associating zoxide's path score,
   # and replacing $HOME with ~
-  for project in ${(u)projects}; do
-    project=${project:h}
+  for project in $(search-paths); do
     score=${scores[$project]:-'0.0'}
     result+=("$score:$project:${(D)project}")
   done
@@ -97,9 +76,8 @@ function main {
 
   if ! [[ -d "$target_dir" ]]; then
     local selected="$(fzf-projects)"
-    [[ -n "$selected" ]] || return 0
-
     target_dir=$(echo "$selected" | cut -d ':' -f2)
+    [[ -d "$target_dir" ]] || return 0
   fi
 
   local session="$(build-session-name "$target_dir")"
