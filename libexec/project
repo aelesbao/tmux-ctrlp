@@ -19,7 +19,7 @@ source $script_dir/../lib/config.zsh
 # Scans the workspaces for git repositories and
 # cleans the trailing .git from the folder name.
 function find-repos() {
-  local -U repos=($(fd --max-depth $max_depth -H -g '.git' ${^workspaces}))
+  local -U repos=($(fd --max-depth $max_depth -H --no-ignore-vcs -g '.git' ${^workspaces}))
   echo ${repos%/\.git(/)#}
 }
 
