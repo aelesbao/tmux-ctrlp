@@ -81,27 +81,28 @@ function main {
   fi
 
   local session="$(build-session-name "$target_dir")"
+  local window_name="${target_dir:t}"
 
   # Increment the directory's rank
   zoxide add "$target_dir"
 
   # If tmux is not running, create the session at target directory
   if [[ -z "$TMUX" ]] && [[ -z "$(pgrep tmux)" ]]; then
-    tmux new-session -s "$session" -c "$target_dir"
+    tmux new-session -s "$session" -c "$target_dir" -n "$window_name"
     return
   fi
 
   # If tmux is running but the session doesn't exists,
   # create it at the target directory
   if ! tmux has-session -t "$session" 2> /dev/null; then
-    tmux new-session -ds "$session" -c "$target_dir"
+    tmux new-session -ds "$session" -c "$target_dir" -n "$window_name"
   fi
 
   # Check if the target has a pane in the selected directory.
   # Otherwise, open a new window on it.
-  pane_paths=($(tmux list-panes -s -t "$session" -F '#{pane_current_path}'))
+  local -a pane_paths=($(tmux list-panes -s -t "$session" -F '#{pane_current_path}'))
   if ! (( $pane_paths[(I)$target_dir] )); then
-    tmux new-window -t "${session}:" -c "$target_dir"
+    tmux new-window -t "${session}:" -c "$target_dir" -n "$window_name"
   fi
 
   # Switch or attach to the session
