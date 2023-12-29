@@ -42,7 +42,12 @@ function main {
     [[ -n "$target" ]] || return 0
   fi
 
-  tmux switch-client -t "$target"
+  # Switch or attach to the session
+  if [ -z "$TMUX" ]; then
+    tmux attach -t "$target"
+  else
+    tmux switch-client -t "$target"
+  fi
 }
 
 main "$@"
