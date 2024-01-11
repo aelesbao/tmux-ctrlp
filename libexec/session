@@ -10,14 +10,17 @@ fi
 local cache_dir="${XDG_CACHE_DIR:-$HOME/.cache}/tmux"
 
 function list-panes {
-  local index_format="#{session_name}:#{window_index}.#{pane_index}"
+  local index_format="#{session_last_attached}.#{window_active}#{pane_active}"
+  local session_id_format="#{session_name}:#{window_index}.#{pane_index}"
   local -a panes_format=(
     "$(tput setaf 6) #{session_name}$(tput sgr0)"
     "$(tput setaf 5) #{window_name}$(tput sgr0)"
     "$(tput setaf 4) #{s@$HOME@~@:pane_current_path}$(tput sgr0)"
     "$(tput setaf 3) #{pane_current_command}$(tput sgr0)"
   )
-  tmux list-panes -a -F "${index_format}#${(j. | .)panes_format}"
+  local format = "${index_format}##${session_id_format}##${(j. | .)panes_format}"
+
+  tmux list-panes -a -F "${format}" | sort -n -r
 }
 
 function fzf-sessions {
@@ -25,10 +28,10 @@ function fzf-sessions {
 
   list-panes | fzf-tmux -p 80% --ansi \
     --scheme=history \
-    --tiebreak=begin,index \
+    --tiebreak=index \
     --history="$cache_dir/ctrlp-session-history" \
-    --delimiter=\# --with-nth=2 \
-    --preview='tmux capture-pane -t {1} -p -e -N' \
+    --delimiter=\# --with-nth=3 \
+    --preview='tmux capture-pane -t {2} -p -e -N' \
     --preview-window='70%:bottom' \
     --border-label='Choose the pane to focus'
 }
