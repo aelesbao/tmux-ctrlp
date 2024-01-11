@@ -41,7 +41,7 @@ function main {
   local target="$1"
 
   if [[ -z "$target" ]]; then
-    target="$(fzf-sessions | cut -d '#' -f1)"
+    target="$(fzf-sessions | cut -d '#' -f2)"
     [[ -n "$target" ]] || return 0
   fi
 
