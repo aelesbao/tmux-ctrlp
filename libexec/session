@@ -18,7 +18,7 @@ function list-panes {
     "$(tput setaf 4) #{s@$HOME@~@:pane_current_path}$(tput sgr0)"
     "$(tput setaf 3) #{pane_current_command}$(tput sgr0)"
   )
-  local format="${index_format}##${session_id_format}##${(j. | .)panes_format}"
+  local format="$(echo "${index_format}##${session_id_format}##${(j. \e[97m\e[0m .)panes_format}")"
 
   tmux list-panes -a -F "${format}" | sort -n -r
 }
