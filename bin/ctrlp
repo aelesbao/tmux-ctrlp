@@ -26,7 +26,7 @@ function main {
     exit 1
   fi
 
-  exec "$command_exec" "${argv[@]:2}"
+  exec "$command_exec" "${argv[@]:2}" 2>/tmp/tmux-ctrlp.err.log
 }
 
 main "$@"
