@@ -86,31 +86,51 @@ function main {
   # Increment the directory's rank
   zoxide add "$target_dir"
 
-  # If tmux is not running, create the session at target directory
+  # Starts the tmux server if it's not running.
   if [[ -z "$TMUX" ]] && [[ -z "$(pgrep tmux)" ]]; then
-    tmux new-session -s "$session" -c "$target_dir" -n "$window_name"
-    return
+    tmux start-server
   fi
 
-  # If tmux is running but the session doesn't exists,
-  # create it at the target directory
-  if ! tmux has-session -t "$session" 2> /dev/null; then
-    tmux new-session -ds "$session" -c "$target_dir" -n "$window_name"
+  # If the session doesn't exist, create it at the target directory.
+  if ! tmux has-session -t "$session" 2>/dev/null; then
+    local cmd
+
+    # Loads a smug project configuration file when the target directory has one.
+    if [[ -f "$target_dir/.smug.yml" ]]; then
+      cmd="smug start -f .smug.yml -i"
+    fi
+
+    tmux new-session -ds "$session" -c "$target_dir" -n "$window_name" $cmd
   fi
 
-  # Check if the target has a pane in the selected directory.
-  # Otherwise, open a new window on it.
-  local -a pane_paths=($(tmux list-panes -s -t "$session" -F '#{pane_current_path}'))
-  if ! (( $pane_paths[(I)$target_dir] )); then
-    tmux new-window -t "${session}:" -c "$target_dir" -n "$window_name"
+  # Find the window id for the target directory.
+  # It gives preference to the window with the same name $window_name.
+  local window_id="$(
+    tmux list-windows -t "$session" -F '#{window_id}:#{window_name}:#{pane_current_path}' 2>/dev/null | \
+      awk "{ print match(\$0, \"(:$window_name)?:$target_dir$\") \":\" \$1 }" | \
+      sort -h -t ':' | \
+      grep -v '0:' -m 1 | \
+      cut -d ':' -f 2
+  )"
+  if [[ -z "$window_id" ]]; then
+    # Open a new window on the target pane in the selected directory when it doesn't exists.
+    window_id="$(tmux new-window -t "$session:" -c "$target_dir" -n "$window_name" -PF "#{window_id}")"
+
+    # Parses a .tmux.conf file in the target directory if it exists.
+    if [[ -f "$target_dir/.tmux.conf" ]]; then
+      tmux source-file -t "$session:$window_id" "$target_dir/.tmux.conf"
+    fi
   fi
 
-  # Switch or attach to the session
-  if [ -z "$TMUX" ]; then
+  # Switch or attach to the session.
+  if [[ -z "$TMUX" ]]; then
     tmux attach -t "$session"
   else
     tmux switch-client -t "$session"
   fi
+
+  # Switch to the target window.
+  tmux select-window -t "$session:$window_id"
 }
 
 main "$@"
