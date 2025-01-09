@@ -24,7 +24,7 @@ function list-panes {
 }
 
 function fzf-sessions {
-  [[ -d "$cache_dir" ]] || mkdir-p "$cache_dir"
+  [[ -d "$cache_dir" ]] || mkdir -p "$cache_dir"
 
   printf "$(list-panes)" | fzf-tmux -p 80% --ansi \
     --scheme=history \
