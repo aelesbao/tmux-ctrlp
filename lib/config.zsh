@@ -44,7 +44,7 @@ function config-org-session() {
   local -U names=(${argv[@]:2})
 
   for name in ${names[@]}; do
-    config-session "$name" $root_path/$name/*
+    config-session "$name" $root_path/$name/*(N)
   done
 }
 
