@@ -61,5 +61,11 @@ function get-tmux-config-dir {
 # Loads the config file located at ~/.config/tmux or ~/.tmux
 function load-config {
   local config_file="$(get-tmux-config-dir)/$config_file_name"
-  [[ -f "${config_file}" ]] && source "$config_file"
+
+  if [[ ! -f "${config_file}" ]]; then
+    echo "projects config file not found: ${config_file}"
+    exit 1
+  fi
+
+  source "$config_file"
 }

@@ -1,6 +1,6 @@
 #!/usr/bin/env zsh
 
-set -e -o extendedglob
+set -e -o extendedglob -x
 
 if ! (( \
        (( ${+commands[eza]} )) \
