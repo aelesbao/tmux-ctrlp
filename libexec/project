@@ -92,7 +92,7 @@ function main {
   fi
 
   # If the session doesn't exist, create it at the target directory.
-  if ! tmux has-session -t "$session" 2>/dev/null; then
+  if ! tmux list-sessions -F \#S | grep -e "^$session$" 2>/dev/null; then
     local cmd
 
     # Loads a smug project configuration file when the target directory has one.
