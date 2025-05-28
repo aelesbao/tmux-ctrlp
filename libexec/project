@@ -92,7 +92,7 @@ function main {
   fi
 
   # If the session doesn't exist, create it at the target directory.
-  if ! tmux list-sessions -F \#S | grep -e "^$session$" 2>/dev/null; then
+  if ! tmux list-sessions -F "#S" | grep -qe "^$session$" 2>/dev/null; then
     local cmd
 
     # Loads a smug project configuration file when the target directory has one.
@@ -105,16 +105,22 @@ function main {
 
   # Find the window id for the target directory.
   # It gives preference to the window with the same name $window_name.
+  
+  tmux list-windows -t "$session" -F '#{window_id}:#{window_name}:#{pane_current_path}' 2>/dev/null | \
+    awk "{ print match(\$0, \"(:$window_name)?:$target_dir$\") \":\" \$1 }" >&2
+
   local window_id="$(
     tmux list-windows -t "$session" -F '#{window_id}:#{window_name}:#{pane_current_path}' 2>/dev/null | \
-      awk "{ print match(\$0, \"(:$window_name)?:$target_dir$\") \":\" \$1 }" | \
+      awk "{ print (match(\$0, \"(:$window_name)?:$target_dir$\") ? \"1\" : \"0\") \":\" \$1 }" | \
       sort -h -t ':' | \
       grep -v '0:' -m 1 | \
       cut -d ':' -f 2
   )"
+  echo "Existing window ID: $window_id" >&2
   if [[ -z "$window_id" ]]; then
     # Open a new window on the target pane in the selected directory when it doesn't exists.
     window_id="$(tmux new-window -t "$session:" -c "$target_dir" -n "$window_name" -PF "#{window_id}")"
+    echo "New window ID: $window_id" >&2
 
     # Parses a .tmux.conf file in the target directory if it exists.
     if [[ -f "$target_dir/.tmux.conf" ]]; then
