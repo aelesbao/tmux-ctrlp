@@ -41,7 +41,7 @@ Add this line to the bottom of your `.tmux.conf`:
 run ~/.tmux/plugins/tmux-ctrlp/ctrlp.tmux
 ```
 
-Reload your TMUX environment:
+Reload your `tmux` environment:
 
 ```sh
 source-file ~/.tmux.conf
@@ -50,12 +50,30 @@ source-file ~/.tmux.conf
 ## Key bindings
 
 
-| Binding | Description |
-|:-------:|-------------|
-| `<prefix> C-p` | Fuzzy find across your defined workspace projects |
+| Binding | Option | Description |
+|:-------:|:------:|-------------|
+| `<prefix> C-p` | `@ctrlp_project_bind` | Fuzzy find across your defined workspace projects |
+| `<prefix> C-s` | `@ctrlp_session_bind` | Fuzzy find across existing sessions with preview |
+
+
+You can change the default bindings adding the following to your `tmux` config:
+
+```tmux
+# Remap in case you use <C-s> as you tmux prefix and want to send double C-s to
+# the terminal
+set -g @ctrlp_session_bind 's'
+```
+
+## Configuration
+
+**TODO**.
+
+Copy the [example config] to `~/.config/tmux/ctrlp.config.zsh` and use it as a
+reference on how to setup the project folder and workspaces.
 
 ## License
 
 [MIT](LICENSE.md)
 
 [ThePrimeagen's script]: https://github.com/ThePrimeagen/.dotfiles/blob/master/bin/.local/scripts/tmux-sessionizer
+[example config]: ./ctrlp.config.example.zsh

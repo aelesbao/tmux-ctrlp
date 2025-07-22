@@ -15,8 +15,8 @@ workspaces=(
   ~/code/freelance
 )
 
-# Assign specific session names for those paths
-config-session-name 'dotfiles' \
+# All paths listed here will use the session name 'dotfiles'
+config-session 'dotfiles' \
   ~/.config/nvim \
   ~/dotfiles
 
