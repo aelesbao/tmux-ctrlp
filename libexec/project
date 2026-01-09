@@ -103,6 +103,9 @@ function main {
     tmux new-session -ds "$session" -c "$target_dir" -n "$window_name" $cmd
   fi
 
+  # Refresh the client to update the session list and pane current path.
+  tmux refresh-client
+
   # Find the window id for the target directory.
   # It gives preference to the window with the same name $window_name.
   
