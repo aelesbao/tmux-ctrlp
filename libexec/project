@@ -32,7 +32,10 @@ function search-paths() {
 
 # Fuzzy find on all projects.
 function fzf-projects {
-  local -A scores=($(zoxide query -sl | awk -F' ' '{ print $2 " " $1 }'))
+  # Get zoxide's scores for all paths in its database
+  # PERF: using --all will make zoxide not check for the existence of the paths, otherwise
+  # this action can cause a huge lag if the paths are network mounts with slow access.
+  local -A scores=($(zoxide query --list --score --all | awk -F' ' '{ print $2 " " $1 }'))
   local -a result=()
 
   # Construct the result array, associating zoxide's path score,
