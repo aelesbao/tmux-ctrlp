@@ -1,6 +1,6 @@
 #!/usr/bin/env zsh
 
-set -e
+set -ex
 
 if ! (( ${+commands[fzf-tmux]} )); then
   echo "Required dependencies not found. Please install fzf" >&2
@@ -9,39 +9,88 @@ fi
 
 local cache_dir="${XDG_CACHE_DIR:-$HOME/.cache}/tmux"
 
+# canonical templates keyed by section name
+local session_fmt window_fmt path_fmt cmd_fmt
+session_fmt="$(tput setaf 6) #{session_name}$(tput sgr0)"
+window_fmt="$(tput setaf 5) #{window_name}$(tput sgr0)"
+path_fmt="$(tput setaf 4) #{s@$HOME@~@:pane_current_path}$(tput sgr0)"
+cmd_fmt="$(tput setaf 3) #{pane_current_command}$(tput sgr0)"
+
 function list-panes {
   local index_format="#{session_last_attached}.#{window_active}#{pane_active}"
   local session_id_format="#{session_name}:#{window_index}.#{pane_index}"
-  local -a panes_format=(
-    "$(tput setaf 6) #{session_name}$(tput sgr0)"
-    "$(tput setaf 5) #{window_name}$(tput sgr0)"
-    "$(tput setaf 4) #{s@$HOME@~@:pane_current_path}$(tput sgr0)"
-    "$(tput setaf 3) #{pane_current_command}$(tput sgr0)"
-  )
+  local -a panes_format=("$session_fmt" "$window_fmt" "$path_fmt" "$cmd_fmt")
   local format="$(echo "${index_format}##${session_id_format}##${(j. \e[97m\e[0m .)panes_format}")"
 
   tmux list-panes -a -F "${format}" | sort -n -r
 }
 
+function list-sessions {
+  local index_format="#{session_last_attached}.#{window_active}"
+  local session_id_format="#{session_name}"
+  local -a panes_format=("$session_fmt")
+  local format="$(echo "${index_format}##${session_id_format}##${(j. \e[97m\e[0m .)panes_format}")"
+
+  tmux list-sessions -F "${format}" | sort -n -r
+}
+
 function fzf-sessions {
   [[ -d "$cache_dir" ]] || mkdir -p "$cache_dir"
 
-  printf "$(list-panes)" | fzf-tmux -p 80% --ansi \
+  local mode="${1:-panes}"
+  local list preview
+
+  if [[ "$mode" == "panes" ]]; then
+    list="$(list-panes)"
+    preview='tmux capture-pane -t {2} -p -e -N'
+  elif [[ "$mode" == "sessions" ]]; then
+    list="$(list-sessions)"
+    local -a panes_format=("$window_fmt" "$path_fmt" "$cmd_fmt")
+    preview_format="$(echo "${(j. \e[97m\e[0m .)panes_format}")"
+    preview="tmux list-panes -st {2} -F '${preview_format}'"
+  else
+    echo "invalid mode: $mode" >&2
+    return 2
+  fi
+
+  printf "${list}" | fzf-tmux -p 80% --ansi \
     --scheme=history \
     --tiebreak=index \
     --history="$cache_dir/ctrlp-session-history" \
     --delimiter=\# --with-nth=3 \
-    --preview='tmux capture-pane -t {2} -p -e -N' \
+    --preview="$preview" \
     --preview-window='70%:bottom' \
     --border-label='Choose the pane to focus'
 }
 
 function main {
-  # target format = session:window.pane
-  local target="$1"
+  zmodload zsh/zutil || return
 
+  # target format = session:window.pane
+  local target mode
+
+  # Brace expansions are great for specifying short and long
+  # option names without duplicating any information.
+  zparseopts -D -F -K --    \
+    {h,-help}=help          \
+    {m,-mode}:=mode || return
+  # zparseopts prints an error message if it cannot parse
+  # arguments, so we can simply return on error.
+
+  if (( $#help )); then
+    print -rC1 --      \
+      "$0 [-h|--help]" \
+      "$0 [-m|--mode=(panes|sessions)] [<target>]"
+    return
+  fi
+
+  target="${^@}"
   if [[ -z "$target" ]]; then
-    target="$(fzf-sessions | cut -d '#' -f2)"
+    if (( $#mode )); then
+      mode=${mode[-1]}
+    fi
+
+    target="$(fzf-sessions ${mode} | cut -d '#' -f2)"
     [[ -n "$target" ]] || return 0
   fi
 
