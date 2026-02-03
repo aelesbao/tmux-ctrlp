@@ -13,8 +13,11 @@ function main {
   tmux bind $(get-tmux-option "@ctrlp_project_bind" "C-p") \
     run "${script_dir}/bin/ctrlp project"
 
-  tmux bind $(get-tmux-option "@ctrlp_session_bind" "C-s") \
-    run "${script_dir}/bin/ctrlp session"
+  tmux bind $(get-tmux-option "@ctrlp_panes_bind" "C-s") \
+    run "${script_dir}/bin/ctrlp session -m panes"
+
+  tmux bind $(get-tmux-option "@ctrlp_sessions_bind" "C-S") \
+    run "${script_dir}/bin/ctrlp session -m sessions"
 }
 
 main
