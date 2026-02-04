@@ -38,29 +38,38 @@ function fzf-sessions {
   [[ -d "$cache_dir" ]] || mkdir -p "$cache_dir"
 
   local mode="${1:-panes}"
-  local list preview
+  local list preview preview_window border_label width
 
   if [[ "$mode" == "panes" ]]; then
     list="$(list-panes)"
     preview='tmux capture-pane -t {2} -p -e -N'
+    preview_window='70%:bottom'
+    border_label='Choose the pane to focus'
+    width='80%'
+
   elif [[ "$mode" == "sessions" ]]; then
     list="$(list-sessions)"
+
     local -a panes_format=("$window_fmt" "$path_fmt" "$cmd_fmt")
     preview_format="$(echo "${(j. \e[97m\e[0m .)panes_format}")"
     preview="tmux list-panes -st {2} -F '${preview_format}'"
+    preview_window='70%:right'
+    border_label='Choose the session to switch'
+    width='50%'
+
   else
     echo "invalid mode: $mode" >&2
     return 2
   fi
 
-  printf "${list}" | fzf-tmux -p 80% --ansi \
+  printf "${list}" | fzf-tmux -p $width --ansi \
     --scheme=history \
     --tiebreak=index \
     --history="$cache_dir/ctrlp-session-history" \
     --delimiter=\# --with-nth=3 \
     --preview="$preview" \
-    --preview-window='70%:bottom' \
-    --border-label='Choose the pane to focus'
+    --preview-window="$preview_window" \
+    --border-label="$border_label"
 }
 
 function main {
